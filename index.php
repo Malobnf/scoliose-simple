@@ -20,18 +20,15 @@
 
   <nav class="mobile-menu" id="mobile-menu">
     <a href="#hero" class="mobile-menu_link">Accueil</a>
-    <a href="#features" class="mobile-menu_link">Fonctionnalités</a>
-    <a href="#pour-qui" class="mobile-menu_link">Pour qui ?</a>
-    <a href="login.html" class="mobile-menu_link">Connexion</a>
+    <a href="login.php" class="mobile-menu_link">Connexion</a>
   </nav>
 
-  <a href="login.html" class="btn btn-primary header-login-btn">
+  <a href="login.php" class="btn btn-primary header-login-btn">
     Connexion
   </a>
 </header>
 
 <main>
-  <!-- HERO PUBLIC -->
   <section class="hero hero--public" id="hero">
     <div class="hero-text">
       <h1>ScoliOse</h1>
@@ -41,14 +38,13 @@
         pensée pour les élèves, les familles et les enseignants.
       </p>
       <div class="public-cta-group">
-        <a href="login.html" class="btn btn-primary">
+        <a href="login.php" class="btn btn-primary">
           Se connecter
         </a>
       </div>
     </div>
   </section>
 
-  <!-- FONCTIONNALITÉS PRINCIPALES -->
   <section class="public-section" id="features">
     <h2 class="public-section__title">Tout ce qu’il faut pour suivre la scolarité</h2>
     <p class="public-section__subtitle">
@@ -119,7 +115,6 @@
 </main>
 
 <footer class="footer">
-  <p>&copy; 2025 - ScoliOse</p>
 </footer>
 </body>
 </html>

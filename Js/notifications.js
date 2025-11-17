@@ -1,9 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof Api === 'undefined' || !Api.getNotifications) {
-    return;
-  }
+  // 1. On récupère les notifications SI on en a, sinon on laisse un tableau vide
+  let notifications = [];
 
-  const notifications = Api.getNotifications().slice().sort((a, b) => {
+  if (typeof window !== 'undefined' && Array.isArray(window.NOTIFICATIONS)) {
+    notifications = window.NOTIFICATIONS.slice();
+  } else if (typeof Api !== 'undefined' && typeof Api.getNotifications === 'function') {
+    notifications = Api.getNotifications().slice();
+  }
+  // ❌ surtout pas de "return" ici :
+  // même avec 0 notif, on veut que la cloche ouvre / ferme le menu
+
+  // Tri par date décroissante
+  notifications.sort((a, b) => {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
@@ -11,28 +19,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const notifMenu = document.getElementById('notif-menu');
   const notifMenuList = document.getElementById('notif-menu-list');
 
-  if (notifBtn && notifMenu && notifMenuList) {
-    // Affivher uniquement les 5 dernières notifications
-    const latestFive = notifications.slice(0, 5);
-    notifMenuList.innerHTML = '';
+  // Si pas de bouton ou pas de menu, on ne fait rien
+  if (notifBtn && notifMenu) {
+    // Remplir la liste SI on a un UL
+    if (notifMenuList) {
+      notifMenuList.innerHTML = '';
+      const latestFive = notifications.slice(0, 5);
 
-    latestFive.forEach(notif => {
-      const li = document.createElement('li');
-      li.classList.add('notif-item');
+      latestFive.forEach(notif => {
+        const li = document.createElement('li');
+        li.classList.add('notif-item');
 
-      // Redirection vers la page notifications avec l'id en paramètre
-      li.innerHTML = `
-        <a href="notifications.html?id=${encodeURIComponent(notif.id)}" class="notif-item__link">
-          <div class="notif-item__title">${notif.title}</div>
-          <div class="notif-item__meta">${new Date(notif.createdAt).toLocaleString('fr-FR')}</div>
-        </a>
-      `;
+        const notifId = encodeURIComponent(notif.id);
 
-      notifMenuList.appendChild(li);
-    });
+        li.innerHTML = `
+          <a href="notifications.php?id=${notifId}" class="notif-item__link">
+            <div class="notif-item__title">${notif.title}</div>
+            <div class="notif-item__meta">${new Date(notif.createdAt).toLocaleString('fr-FR')}</div>
+          </a>
+        `;
 
-    // Toggle du menu au clic sur la cloche
-    notifBtn.addEventListener('click', () => {
+        notifMenuList.appendChild(li);
+      });
+    }
+
+    // Toggle du menu au clic sur la cloche (même avec 0 notif)
+    notifBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const isOpen = notifMenu.classList.toggle('is-open');
       notifBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       notifMenu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
@@ -48,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Page notifications complète
+  // ----- PARTIE PAGE notifications complète (optionnelle) -----
   const notificationsPageList = document.getElementById('notifications-page-list');
   if (notificationsPageList) {
     notificationsPageList.innerHTML = '';
@@ -56,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     notifications.forEach(notif => {
       const item = document.createElement('article');
       item.classList.add('notification-card');
-      item.id = notif.id;
+      item.id = String(notif.id);
 
       item.innerHTML = `
         <h3 class="notification-card__title">${notif.title}</h3>
@@ -68,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
       notificationsPageList.appendChild(item);
     });
 
-    // Mettre en avant la notification cliquée (paramètre ?id=)
     const params = new URLSearchParams(window.location.search);
     const notifId = params.get('id');
 

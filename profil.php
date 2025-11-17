@@ -1,3 +1,65 @@
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require __DIR__ . '/inc/db.php';
+session_start();
+
+// Vérifier la connexion
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$userId = (int) $_SESSION['user_id'];
+
+// Récupérer les infos
+$sql = "
+    SELECT 
+        u.email,
+        sp.first_name,
+        sp.last_name,
+        sp.class_name
+    FROM users u
+    LEFT JOIN student_profiles sp ON sp.user_id = u.id
+    WHERE u.id = :uid
+";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([':uid' => $userId]);
+$student = $stmt->fetch();
+
+// Message si pas d'information
+function valueOrNone(?string $value): string {
+    $v = trim((string)$value);
+    return $v === '' ? 'Aucune information disponible' : $v;
+}
+
+// Récupérer photo de profil si en bdd sinon garder l'image de base
+$avatarUrl = $student['avatar_url'] ?? 'Images/avatar-1577909.svg';
+
+
+// Afficher les informations stockées en bdd
+$firstNameRaw = $student['first_name'] ?? '';
+$lastNameRaw  = $student['last_name'] ?? '';
+
+$fullNameRaw  = trim($firstNameRaw . ' ' . $lastNameRaw);
+$fullName     = $fullNameRaw !== '' ? $fullNameRaw : 'Aucune information disponible';
+
+$className    = valueOrNone($student['class_name'] ?? '');
+$email        = valueOrNone($student['email'] ?? '');
+
+// Si infos pas encore renseignées 
+$guardianName  = 'Aucune information disponible';
+$guardianPhone = 'Aucune information disponible';
+$guardianEmail = 'Aucune information disponible';
+$schoolName    = 'Aucune information disponible';
+$level         = 'Aucune information disponible';
+$schoolYear    = 'Aucune information disponible';
+$mainTeacher   = 'Aucune information disponible';
+?>
+
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -7,9 +69,10 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="Js/app.js" defer></script>
-  <script src="Js/api-mock.js" defer></script>
+  <!-- <script src="Js/api-mock.js" defer></script> -->
   <script src="Js/profil.js" defer></script>
   <script src="Js/notifications.js" defer></script>
+  <script src="Js/messagerie.js" defer></script>
 </head>
 
 <body>
@@ -24,43 +87,48 @@
     <a href="accueil.php" class="mobile-menu_link">Accueil</a>
     <a href="messagerie.php" class="mobile-menu_link">Messagerie</a>
     <a href="profil.php" class="mobile-menu_link">Profil</a>
-    <a href="index.php" class="mobile-menu_link">Déconnexion</a>
+    <a href="logout.php" class="mobile-menu_link">Déconnexion</a>
   </nav>
 
-
-  <button class="nav-toggle" aria-label="Notifications">
+  <!-- 🔴 IMPORTANT : id="notif-btn" -->
+  <button class="nav-toggle" id="notif-btn" aria-label="Ouvrir les notifications" aria-expanded="false" aria-controls="notif-menu">
     <i class="fa-regular fa-bell"></i>
   </button>
+
+  <!-- 🔴 IMPORTANT : menu + liste avec bons ids -->
+  <div class="notif-menu" id="notif-menu" aria-hidden="true">
+    <div class="notif-menu__header">
+      <span>Notifications</span>
+      <a href="notifications.php" class="notif-menu__all">Tout voir</a>
+    </div>
+    <ul class="notif-menu__list" id="notif-menu-list"></ul>
+  </div>
 </header>
+
 
 <main class="profile-main" id="profile-page">
   <section class="hero hero--profile">
     <div class="hero-text">
-      <h1 id="profile-name-hero">Nom de l'élève</h1>
-      <h2 id="profile-role-class">Élève – Classe</h2>
-      <p class="hero-subtitle" id="profile-tagline">
-        Suivi personnalisé de votre scolarité : notes, devoirs, messagerie et ressources.
-      </p>
+      <h1 id="profile-name-hero"><?= htmlspecialchars($fullName) ?></h1>
+      <h2 id="profile-role-class">Élève – <?= htmlspecialchars($className) ?></h2>
     </div>
     <div class="hero-photo">
-      <img src="Images/avatar-1577909.svg" alt="Illustration icône de profil" class="image">
+      <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Illustration icône de profil" class="image">
     </div>
   </section>
 
-  <!-- Layout profil -->
   <section class="profile-layout">
-    <!-- Colonne gauche : infos élèves / responsables -->
     <section class="profile-column profile-column--left">
       <article class="profile-card">
         <h2>Informations de l’élève</h2>
         <dl class="profile-fields">
           <div class="profile-field">
             <dt>Nom</dt>
-            <dd id="profile-name">Nom de l'élève</dd>
+            <dd id="profile-name"><?= htmlspecialchars($fullName) ?></dd>
           </div>
           <div class="profile-field">
             <dt>Classe</dt>
-            <dd id="profile-class">4ème B</dd>
+            <dd id="profile-class"><?= htmlspecialchars($className) ?></dd>
           </div>
           <div class="profile-field">
             <dt>Établissement</dt>
@@ -68,7 +136,7 @@
           </div>
           <div class="profile-field">
             <dt>Email</dt>
-            <dd id="profile-email">prenom.nom@example.com</dd>
+            <dd id="profile-email"><?= htmlspecialchars($email) ?></dd>
           </div>
         </dl>
       </article>
@@ -92,7 +160,6 @@
       </article>
     </section>
 
-    <!-- Colonne droite : scolarité / notes -->
     <section class="profile-column profile-column--right">
       <article class="profile-card">
         <h2>Scolarité</h2>
@@ -114,13 +181,6 @@
 
       <article class="profile-card">
         <h2>Dernières notes</h2>
-        <ul class="profile-grades-list" id="profile-grades-list">
-          <li class="profile-grade-item">
-            <span class="profile-grade-subject">Maths</span>
-            <span class="profile-grade-value">16/20</span>
-            <span class="profile-grade-date">12/11</span>
-          </li>
-        </ul>
         <button class="btn btn-primary profile-grades-button">
           Voir le détail des notes
         </button>

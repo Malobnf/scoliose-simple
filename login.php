@@ -1,12 +1,51 @@
 <?php
-// login.php – page de connexion
 require __DIR__ . '/inc/db.php';
+session_start();
 
-// TODO plus tard : traiter $_POST pour vérifier l'identifiant / mot de passe
-// et rediriger vers index.php en cas de succès.
+$error = null;
+$email = ''; // Garder le mail affiché si erreur de mdp par exemple
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email    = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+
+    $email = trim($email);
+
+    // Récupérer utilisateur + rôle
+    $stmt = $pdo->prepare('
+        SELECT u.id, u.email, u.password_hash, u.role_id, r.name AS role_name
+        FROM users u
+        JOIN roles r ON r.id = u.role_id
+        WHERE u.email = :email
+    ');
+    $stmt->execute([':email' => $email]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($password, $user['password_hash'])) {
+
+        session_regenerate_id(true);
+
+        $_SESSION['user_id']   = (int)$user['id'];
+        $_SESSION['email']     = $user['email'];
+        $_SESSION['role_id']   = (int)$user['role_id'];
+        $_SESSION['role_name'] = $user['role_name'];
+
+    if ($user['role_name'] === 'ROLE_ADMIN') {
+      header('Location: admin.php');
+    } elseif ($user['role_name'] === 'ROLE_TEACHER') {
+      header('Location: profil_enseignant.php');
+    } elseif ($user['role_name'] === 'ROLE_STUDENT') {
+      header('Location: accueil.php');
+    } else {
+      header('Location: index.php');
+    }
+    exit;
+
+    } else {
+        $error = "Identifiants incorrects.";
+    }
+}
 ?>
-
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -15,24 +54,32 @@ require __DIR__ . '/inc/db.php';
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="Js/app.js" defer></script>
 </head>
 
 <body>
-<header class="site-header site-header--center">
+<header class="site-header">
+  <button class="burger-btn" id="burger-btn" aria-label="Ouvrir le menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+
   <h1 class="site-title">ScoliOse</h1>
+
+  <nav class="mobile-menu" id="mobile-menu">
+    <a href="index.php" class="mobile-menu_link">Accueil</a>
+    <a href="logout.php" class="mobile-menu_link">Déconnexion</a>
+  </nav>
 </header>
 
 <main class="auth-main">
   <section class="auth-layout">
-    <!-- Colonne gauche : formulaire -->
     <section class="auth-card">
       <h2 class="auth-title">Connexion</h2>
       <p class="auth-subtitle">
-        Connectez-vous pour accéder à votre tableau de bord, vos messages et vos résultats.
+        Connectez-vous pour accéder à vos messages, vos notes et vos ressources.
       </p>
 
-      <!-- Formulaire de login -->
-      <form class="auth-form" method="post" action="/login">
+      <form class="auth-form" method="post" action="login.php">
         <div class="auth-field">
           <label for="login-email">Adresse e-mail</label>
           <div class="auth-input-wrapper">
@@ -45,7 +92,8 @@ require __DIR__ . '/inc/db.php';
               name="email"
               required
               autocomplete="email"
-              placeholder="prenom.nom@example.com"
+              placeholder="admin@example.com"
+              value="<?= htmlspecialchars($email) ?>"
             >
           </div>
         </div>
@@ -67,52 +115,17 @@ require __DIR__ . '/inc/db.php';
           </div>
         </div>
 
-        <div class="auth-options">
-          <label class="auth-remember">
-            <input type="checkbox" name="remember_me">
-            <span>Se souvenir de moi</span>
-          </label>
-          <a href="#" class="auth-link">Mot de passe oublié ?</a>
-        </div>
-
-        <!-- Zone de message d’erreur -->
-        <p class="auth-error" id="login-error" aria-live="polite" hidden>
-          Identifiants incorrects. Merci de réessayer.
-        </p>
+        <?php if ($error): ?>
+          <p class="auth-error" id="login-error" aria-live="polite">
+            <?= htmlspecialchars($error) ?>
+          </p>
+        <?php endif; ?>
 
         <button type="submit" class="btn btn-primary auth-submit">
           <span>Se connecter</span>
           <i class="fa-solid fa-arrow-right-to-bracket"></i>
         </button>
       </form>
-
-      <p class="auth-footer-text">
-        Besoin d’aide ? Contactez l’établissement scolaire.
-      </p>
-    </section>
-
-    <!-- Colonne droite : illustration -->
-    <section class="auth-side">
-      <div class="auth-side-card">
-        <h2>Un espace élève centralisé</h2>
-        <p>
-          Retrouvez vos devoirs, vos notes, votre messagerie et vos ressources pédagogiques
-          au même endroit, dans une interface claire et accessible.
-        </p>
-        <ul class="auth-side-list">
-          <li><i class="fa-solid fa-check"></i> Suivi des notes en temps réel</li>
-          <li><i class="fa-solid fa-check"></i> Communication avec les enseignants</li>
-          <li><i class="fa-solid fa-check"></i> Rappels pour les devoirs importants</li>
-        </ul>
-      </div>
-
-      <div class="auth-illustration-wrapper">
-        <img
-          src="assets/images/login-illustration.svg"
-          alt="Illustration élève connecté"
-          class="auth-illustration"
-        >
-      </div>
     </section>
   </section>
 </main>

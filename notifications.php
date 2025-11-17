@@ -29,6 +29,7 @@ $highlightId = isset($_GET['id']) ? (int) $_GET['id'] : null;
   <script src="Js/app.js" defer></script>
   <script src="Js/api-mock.js" defer></script>
   <script src="Js/notifications.js" defer></script>
+  <script src="Js/profil.js" defer></script>
 </head>
 
 <body>
@@ -54,7 +55,7 @@ $highlightId = isset($_GET['id']) ? (int) $_GET['id'] : null;
   <div class="notif-menu" id="notif-menu" aria-hidden="true">
     <div class="notif-menu__header">
       <span>Notifications</span>
-      <a href="notifications.html" class="notif-menu__all">Tout voir</a>
+      <a href="notifications.php" class="notif-menu__all">Tout voir</a>
     </div>
     <ul class="notif-menu__list" id="notif-menu-list"></ul>
   </div>
